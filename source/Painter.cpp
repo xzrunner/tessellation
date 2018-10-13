@@ -1,0 +1,404 @@
+// some code from imgui: https://github.com/ocornut/imgui
+
+#include "tessellation/Painter.h"
+#include "tessellation/Palette.h"
+
+#include <SM_Calc.h>
+#include <primitive/Path.h>
+
+namespace
+{
+const uint32_t COL32_A_MASK = 0xFF000000;
+}
+
+namespace tess
+{
+
+void Painter::AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	sm::vec2 pts[] = { p0, p1 };
+	Stroke(pts, 2, col, false, size);
+}
+
+void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	prim::Path path;
+	path.MoveTo(p0);
+	path.LineTo({ p1.x, p0.y });
+	path.LineTo(p1);
+	path.LineTo({ p0.x, p1.y });
+	path.LineTo(p0);
+
+	Stroke(path, col, size);
+}
+
+void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+}
+
+void Painter::AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	Stroke(points, count, col, false, size);
+}
+
+void Painter::AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	Stroke(points, count, col, true, size);
+}
+
+void Painter::AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t col)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	Fill(points, count, col);
+}
+
+void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float size)
+{
+	if ((col & COL32_A_MASK) == 0 || ori_count < 2) {
+		return;
+	}
+
+	size_t new_count = closed ? ori_count : ori_count - 1;
+
+	auto& uv = Palette::UV_WHITE;
+	if (m_flags & ANTI_ALIASED_LINES)
+	{
+		const bool thick_line = size > 1.0f;
+
+        // Anti-aliased stroke
+        const float AA_SIZE = 1.0f;
+        const uint32_t col_trans = col & ~COL32_A_MASK;
+
+        const int idx_count = thick_line ? new_count * 18 : new_count * 12;
+        const int vtx_count = thick_line ? ori_count * 4 : ori_count * 3;
+		m_buf.Reserve(idx_count, vtx_count);
+
+        // Temporary buffer
+		sm::vec2* temp_normals = (sm::vec2*)alloca(ori_count * (thick_line ? 5 : 3) * sizeof(sm::vec2));
+		sm::vec2* temp_points = temp_normals + ori_count;
+
+        for (size_t i1 = 0; i1 < new_count; i1++)
+        {
+            const int i2 = (i1+1) == ori_count ? 0 : i1+1;
+			auto& p0 = points[i1];
+			auto& p1 = points[i2];
+			auto diff = p1 - p0;
+			auto inv_len = p0 == p1 ? 1 : 1.0f / sm::dis_pos_to_pos(p0, p1);
+			diff *= inv_len;
+            temp_normals[i1].x = diff.y;
+            temp_normals[i1].y = -diff.x;
+        }
+        if (!closed)
+            temp_normals[ori_count - 1] = temp_normals[ori_count - 2];
+
+        if (!thick_line)
+        {
+            if (!closed)
+            {
+                temp_points[0] = points[0] + temp_normals[0] * AA_SIZE;
+                temp_points[1] = points[0] - temp_normals[0] * AA_SIZE;
+                temp_points[(ori_count-1)*2+0] = points[ori_count-1] + temp_normals[ori_count-1] * AA_SIZE;
+                temp_points[(ori_count-1)*2+1] = points[ori_count-1] - temp_normals[ori_count-1] * AA_SIZE;
+            }
+
+            // FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
+            unsigned int idx1 = m_buf.curr_index;
+            for (size_t i1 = 0; i1 < new_count; i1++)
+            {
+                const int i2 = (i1+1) == ori_count ? 0 : i1+1;
+                unsigned int idx2 = (i1+1) == ori_count ? m_buf.curr_index : idx1+3;
+
+                // Average normals
+                sm::vec2 dm = (temp_normals[i1] + temp_normals[i2]) * 0.5f;
+                float dmr2 = dm.x*dm.x + dm.y*dm.y;
+                if (dmr2 > 0.000001f)
+                {
+                    float scale = 1.0f / dmr2;
+                    if (scale > 100.0f) scale = 100.0f;
+                    dm *= scale;
+                }
+                dm *= AA_SIZE;
+                temp_points[i2*2+0] = points[i2] + dm;
+                temp_points[i2*2+1] = points[i2] - dm;
+
+                // Add indexes
+                m_buf.index_ptr[0] = (idx2+0); m_buf.index_ptr[1] = (idx1+0); m_buf.index_ptr[2] = (idx1+2);
+                m_buf.index_ptr[3] = (idx1+2); m_buf.index_ptr[4] = (idx2+2); m_buf.index_ptr[5] = (idx2+0);
+                m_buf.index_ptr[6] = (idx2+1); m_buf.index_ptr[7] = (idx1+1); m_buf.index_ptr[8] = (idx1+0);
+                m_buf.index_ptr[9] = (idx1+0); m_buf.index_ptr[10]= (idx2+0); m_buf.index_ptr[11]= (idx2+1);
+                m_buf.index_ptr += 12;
+
+                idx1 = idx2;
+            }
+
+            // Add vertexes
+            for (size_t i = 0; i < ori_count; i++)
+            {
+                m_buf.vert_ptr[0].pos = points[i];          m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col;
+                m_buf.vert_ptr[1].pos = temp_points[i*2+0]; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col_trans;
+                m_buf.vert_ptr[2].pos = temp_points[i*2+1]; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col_trans;
+                m_buf.vert_ptr += 3;
+            }
+        }
+        else
+        {
+            const float half_inner_thickness = (size - AA_SIZE) * 0.5f;
+            if (!closed)
+            {
+                temp_points[0] = points[0] + temp_normals[0] * (half_inner_thickness + AA_SIZE);
+                temp_points[1] = points[0] + temp_normals[0] * (half_inner_thickness);
+                temp_points[2] = points[0] - temp_normals[0] * (half_inner_thickness);
+                temp_points[3] = points[0] - temp_normals[0] * (half_inner_thickness + AA_SIZE);
+                temp_points[(ori_count-1)*4+0] = points[ori_count-1] + temp_normals[ori_count-1] * (half_inner_thickness + AA_SIZE);
+                temp_points[(ori_count-1)*4+1] = points[ori_count-1] + temp_normals[ori_count-1] * (half_inner_thickness);
+                temp_points[(ori_count-1)*4+2] = points[ori_count-1] - temp_normals[ori_count-1] * (half_inner_thickness);
+                temp_points[(ori_count-1)*4+3] = points[ori_count-1] - temp_normals[ori_count-1] * (half_inner_thickness + AA_SIZE);
+            }
+
+            // FIXME-OPT: Merge the different loops, possibly remove the temporary buffer.
+            unsigned int idx1 = m_buf.curr_index;
+            for (size_t i1 = 0; i1 < new_count; i1++)
+            {
+                const int i2 = (i1+1) == ori_count ? 0 : i1+1;
+                unsigned int idx2 = (i1+1) == ori_count ? m_buf.curr_index : idx1+4;
+
+                // Average normals
+                sm::vec2 dm = (temp_normals[i1] + temp_normals[i2]) * 0.5f;
+                float dmr2 = dm.x*dm.x + dm.y*dm.y;
+                if (dmr2 > 0.000001f)
+                {
+                    float scale = 1.0f / dmr2;
+                    if (scale > 100.0f) scale = 100.0f;
+                    dm *= scale;
+                }
+                sm::vec2 dm_out = dm * (half_inner_thickness + AA_SIZE);
+                sm::vec2 dm_in = dm * half_inner_thickness;
+                temp_points[i2*4+0] = points[i2] + dm_out;
+                temp_points[i2*4+1] = points[i2] + dm_in;
+                temp_points[i2*4+2] = points[i2] - dm_in;
+                temp_points[i2*4+3] = points[i2] - dm_out;
+
+                // Add indexes
+                m_buf.index_ptr[0]  = (idx2+1); m_buf.index_ptr[1]  = (idx1+1); m_buf.index_ptr[2]  = (idx1+2);
+                m_buf.index_ptr[3]  = (idx1+2); m_buf.index_ptr[4]  = (idx2+2); m_buf.index_ptr[5]  = (idx2+1);
+                m_buf.index_ptr[6]  = (idx2+1); m_buf.index_ptr[7]  = (idx1+1); m_buf.index_ptr[8]  = (idx1+0);
+                m_buf.index_ptr[9]  = (idx1+0); m_buf.index_ptr[10] = (idx2+0); m_buf.index_ptr[11] = (idx2+1);
+                m_buf.index_ptr[12] = (idx2+2); m_buf.index_ptr[13] = (idx1+2); m_buf.index_ptr[14] = (idx1+3);
+                m_buf.index_ptr[15] = (idx1+3); m_buf.index_ptr[16] = (idx2+3); m_buf.index_ptr[17] = (idx2+2);
+                m_buf.index_ptr += 18;
+
+                idx1 = idx2;
+            }
+
+            // Add vertexes
+            for (size_t i = 0; i < ori_count; i++)
+            {
+                m_buf.vert_ptr[0].pos = temp_points[i*4+0]; m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col_trans;
+                m_buf.vert_ptr[1].pos = temp_points[i*4+1]; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col;
+                m_buf.vert_ptr[2].pos = temp_points[i*4+2]; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col;
+                m_buf.vert_ptr[3].pos = temp_points[i*4+3]; m_buf.vert_ptr[3].uv = uv; m_buf.vert_ptr[3].col = col_trans;
+                m_buf.vert_ptr += 4;
+            }
+        }
+        m_buf.curr_index += vtx_count;
+	}
+	else
+	{
+		const size_t idx_count = new_count * 6;
+		const size_t vtx_count = new_count * 4;
+		m_buf.Reserve(idx_count, vtx_count);
+
+		for (size_t i = 0; i < new_count; ++i)
+		{
+			const int j = (i + 1) == ori_count ? 0 : i + 1;
+			auto& p0 = points[i];
+			auto& p1 = points[j];
+			auto diff = p1 - p0;
+			auto inv_len = p0 == p1 ? 1 : 1.0f / sm::dis_pos_to_pos(p0, p1);
+			diff *= inv_len;
+
+			const float dx = diff.x * (size * 0.5f);
+			const float dy = diff.y * (size * 0.5f);
+			m_buf.vert_ptr[0].pos.x = p0.x + dy; m_buf.vert_ptr[0].pos.y = p0.y - dx; m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col;
+			m_buf.vert_ptr[1].pos.x = p1.x + dy; m_buf.vert_ptr[1].pos.y = p1.y - dx; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col;
+			m_buf.vert_ptr[2].pos.x = p1.x - dy; m_buf.vert_ptr[2].pos.y = p1.y + dx; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col;
+			m_buf.vert_ptr[3].pos.x = p0.x - dy; m_buf.vert_ptr[3].pos.y = p0.y + dx; m_buf.vert_ptr[3].uv = uv; m_buf.vert_ptr[3].col = col;
+			m_buf.vert_ptr += 4;
+
+			m_buf.index_ptr[0] = m_buf.curr_index;
+			m_buf.index_ptr[1] = m_buf.curr_index + 1;
+			m_buf.index_ptr[2] = m_buf.curr_index + 2;
+			m_buf.index_ptr[3] = m_buf.curr_index;
+			m_buf.index_ptr[4] = m_buf.curr_index + 2;
+			m_buf.index_ptr[5] = m_buf.curr_index + 3;
+			m_buf.index_ptr  += 6;
+			m_buf.curr_index += 4;
+		}
+	}
+}
+
+void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
+{
+	if ((col & COL32_A_MASK) == 0 || count < 3) {
+		return;
+	}
+
+	auto& uv = Palette::UV_WHITE;
+	if (m_flags & ANTI_ALIASED_FILL)
+    {
+        // Anti-aliased Fill
+        const float AA_SIZE = 1.0f;
+        const uint32_t col_trans = col & ~COL32_A_MASK;
+        const int idx_count = (count - 2) * 3 + count * 6;
+        const int vtx_count = (count * 2);
+		m_buf.Reserve(idx_count, vtx_count);
+
+        // Add indexes for fill
+        unsigned int vtx_inner_idx = m_buf.curr_index;
+        unsigned int vtx_outer_idx = m_buf.curr_index+1;
+        for (int i = 2; i < count; i++)
+        {
+            m_buf.index_ptr[0] = vtx_inner_idx;
+			m_buf.index_ptr[1] = vtx_inner_idx + ((i - 1) << 1);
+			m_buf.index_ptr[2] = vtx_inner_idx + (i << 1);
+            m_buf.index_ptr += 3;
+        }
+
+        // Compute normals
+        sm::vec2* temp_normals = (sm::vec2*)alloca(count * sizeof(sm::vec2));
+        for (int i0 = count-1, i1 = 0; i1 < count; i0 = i1++)
+        {
+            const sm::vec2& p0 = points[i0];
+            const sm::vec2& p1 = points[i1];
+            sm::vec2 diff = p1 - p0;
+			auto inv_len = p0 == p1 ? 1 : 1.0f / sm::dis_pos_to_pos(p0, p1);
+			diff *= inv_len;
+            temp_normals[i0].x = diff.y;
+            temp_normals[i0].y = -diff.x;
+        }
+
+        for (int i0 = count-1, i1 = 0; i1 < count; i0 = i1++)
+        {
+            // Average normals
+            const sm::vec2& n0 = temp_normals[i0];
+            const sm::vec2& n1 = temp_normals[i1];
+            sm::vec2 dm = (n0 + n1) * 0.5f;
+			float dmr2 = dm.LengthSquared();
+            if (dmr2 > 0.000001f)
+            {
+                float scale = 1.0f / dmr2;
+                if (scale > 100.0f) scale = 100.0f;
+                dm *= scale;
+            }
+            dm *= AA_SIZE * 0.5f;
+
+            // Add vertices
+            m_buf.vert_ptr[0].pos = (points[i1] - dm); m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col;        // Inner
+            m_buf.vert_ptr[1].pos = (points[i1] + dm); m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col_trans;  // Outer
+            m_buf.vert_ptr += 2;
+
+            // Add indexes for fringes
+            m_buf.index_ptr[0] = vtx_inner_idx + (i1 << 1);
+			m_buf.index_ptr[1] = vtx_inner_idx + (i0 << 1);
+			m_buf.index_ptr[2] = vtx_outer_idx + (i0 << 1);
+            m_buf.index_ptr[3] = vtx_outer_idx + (i0 << 1);
+			m_buf.index_ptr[4] = vtx_outer_idx + (i1 << 1);
+			m_buf.index_ptr[5] = vtx_inner_idx + (i1 << 1);
+            m_buf.index_ptr += 6;
+        }
+        m_buf.curr_index += vtx_count;
+    }
+	else
+	{
+		const size_t idx_count = (count - 2) * 3;
+		const size_t vtx_count = count;
+		m_buf.Reserve(idx_count, vtx_count);
+		for (size_t i = 0; i < vtx_count; i++)
+		{
+			m_buf.vert_ptr[0].pos = points[i];
+			m_buf.vert_ptr[0].uv = uv;
+			m_buf.vert_ptr[0].col = col;
+			m_buf.vert_ptr++;
+		}
+		for (unsigned short i = 2; i < count; i++)
+		{
+			m_buf.index_ptr[0] = m_buf.curr_index;
+			m_buf.index_ptr[1] = m_buf.curr_index + i - 1;
+			m_buf.index_ptr[2] = m_buf.curr_index + i;
+			m_buf.index_ptr += 3;
+		}
+		m_buf.curr_index += static_cast<unsigned short>(vtx_count);
+	}
+}
+
+void Painter::Stroke(const prim::Path& path, uint32_t col, float size)
+{
+	for (auto& path : path.GetPrevPaths()) {
+		Stroke(path.vertices.data(), path.vertices.size(), col, false, size);
+	}
+	auto& p = path.GetCurrPath();
+	Stroke(p.data(), p.size(), col, false, size);
+}
+
+void Painter::Fill(const prim::Path& path, uint32_t col)
+{
+	for (auto& path : path.GetPrevPaths()) {
+		Fill(path.vertices.data(), path.vertices.size(), col);
+	}
+	auto& p = path.GetCurrPath();
+	Fill(p.data(), p.size(), col);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// struct Painter::Buffer
+//////////////////////////////////////////////////////////////////////////
+
+void Painter::Buffer::Reserve(size_t idx_count, size_t vtx_count)
+{
+	//assert(!commands.empty());
+	//commands.back().elem_count += idx_count;
+
+	size_t sz = vertices.size();
+	vertices.resize(sz + vtx_count);
+	vert_ptr = vertices.data() + sz;
+
+	sz = indices.size();
+	indices.resize(sz + idx_count);
+	index_ptr = indices.data() + sz;
+}
+
+void Painter::Buffer::Clear()
+{
+	commands.resize(0);
+	vertices.resize(0);
+	indices.resize(0);
+
+	curr_index = 0;
+	vert_ptr   = nullptr;
+	index_ptr  = nullptr;
+}
+
+}

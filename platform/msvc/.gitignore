@@ -1,0 +1,5 @@
+tessellation/
+projects/*
+
+!projects/tessellation.vcxproj
+!projects/tessellation.vcxproj.filters
