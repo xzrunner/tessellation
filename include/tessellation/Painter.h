@@ -25,14 +25,19 @@ static const uint32_t ANTI_ALIASED_FILL  = 0x2;
 class Painter
 {
 public:
-
 	void AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float size = 1.0f);
 	void AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding = CORNER_FLAGS_ALL, float size = 1.0f);
 	void AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding = CORNER_FLAGS_ALL);
-
+	void AddCircle(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments = 12, float size = 1.0f);
+	void AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments = 12);
+	void AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float size = 1.0f);
+	void AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col);
 	void AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float size = 1.0f);
+	void AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float size = 1.0f);
 	void AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float size = 1.0f);
 	void AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t col);
+
+	void Clear();
 
 public:
 	struct Vertex
@@ -66,6 +71,7 @@ public:
 
 private:
 	void Stroke(const sm::vec2* points, size_t count, uint32_t col, bool closed, float size = 1.0f);
+	void StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, bool closed, float size = 1.0f);
 	void Fill(const sm::vec2* points, size_t count, uint32_t col);
 
 	void Stroke(const prim::Path& path, uint32_t col, float size = 1.0f);

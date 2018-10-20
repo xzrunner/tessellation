@@ -46,6 +46,63 @@ void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col
 		return;
 	}
 
+	prim::Path path;
+	path.MoveTo(p0);
+	path.LineTo({ p1.x, p0.y });
+	path.LineTo(p1);
+	path.LineTo({ p0.x, p1.y });
+
+	Fill(path, col);
+}
+
+void Painter::AddCircle(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	prim::Path path;
+	path.Arc(centre, radius - 0.5f, 0.0f, SM_PI * 2.0f, num_segments);
+	Stroke(path, col, size);
+}
+
+void Painter::AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	const float a_max = SM_PI * 2.0f * ((float)num_segments - 1.0f) / (float)num_segments;
+	prim::Path path;
+	path.Arc(centre, radius - 0.5f, 0.0f, a_max, num_segments);
+	Fill(path, col);
+}
+
+void Painter::AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	prim::Path path;
+	path.MoveTo(p0);
+	path.LineTo(p1);
+	path.LineTo(p2);
+	path.LineTo(p0);
+	Stroke(path, col, size);
+}
+
+void Painter::AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	prim::Path path;
+	path.MoveTo(p0);
+	path.LineTo(p1);
+	path.LineTo(p2);
+	Fill(path, col);
 }
 
 void Painter::AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float size)
@@ -55,6 +112,11 @@ void Painter::AddPolyline(const sm::vec2* points, size_t count, uint32_t col, fl
 	}
 
 	Stroke(points, count, col, false, size);
+}
+
+void Painter::AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float size)
+{
+	StrokeMultiColor(points, cols, count, false, size);
 }
 
 void Painter::AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float size)
@@ -75,12 +137,23 @@ void Painter::AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t co
 	Fill(points, count, col);
 }
 
+void Painter::Clear()
+{
+	m_buf.Clear();
+}
+
 void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float size)
 {
 	if ((col & COL32_A_MASK) == 0 || ori_count < 2) {
 		return;
 	}
 
+	std::vector<uint32_t> colors(ori_count, col);
+	StrokeMultiColor(points, colors.data(), ori_count, closed, size);
+}
+
+void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, size_t ori_count, bool closed, float size)
+{
 	size_t new_count = closed ? ori_count : ori_count - 1;
 
 	auto& uv = Palette::UV_WHITE;
@@ -90,7 +163,6 @@ void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, boo
 
         // Anti-aliased stroke
         const float AA_SIZE = 1.0f;
-        const uint32_t col_trans = col & ~COL32_A_MASK;
 
         const int idx_count = thick_line ? new_count * 18 : new_count * 12;
         const int vtx_count = thick_line ? ori_count * 4 : ori_count * 3;
@@ -157,6 +229,8 @@ void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, boo
             // Add vertexes
             for (size_t i = 0; i < ori_count; i++)
             {
+				auto& col = cols[i];
+				const uint32_t col_trans = col & ~COL32_A_MASK;
                 m_buf.vert_ptr[0].pos = points[i];          m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col;
                 m_buf.vert_ptr[1].pos = temp_points[i*2+0]; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col_trans;
                 m_buf.vert_ptr[2].pos = temp_points[i*2+1]; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col_trans;
@@ -216,6 +290,8 @@ void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, boo
             // Add vertexes
             for (size_t i = 0; i < ori_count; i++)
             {
+				auto& col = cols[i];
+				const uint32_t col_trans = col & ~COL32_A_MASK;
                 m_buf.vert_ptr[0].pos = temp_points[i*4+0]; m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col_trans;
                 m_buf.vert_ptr[1].pos = temp_points[i*4+1]; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col;
                 m_buf.vert_ptr[2].pos = temp_points[i*4+2]; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col;
@@ -233,6 +309,8 @@ void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, boo
 
 		for (size_t i = 0; i < new_count; ++i)
 		{
+			auto& col = cols[i];
+
 			const int j = (i + 1) == ori_count ? 0 : i + 1;
 			auto& p0 = points[i];
 			auto& p1 = points[j];
@@ -279,7 +357,7 @@ void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
         // Add indexes for fill
         unsigned int vtx_inner_idx = m_buf.curr_index;
         unsigned int vtx_outer_idx = m_buf.curr_index+1;
-        for (int i = 2; i < count; i++)
+        for (int i = 2; i < static_cast<int>(count); i++)
         {
             m_buf.index_ptr[0] = vtx_inner_idx;
 			m_buf.index_ptr[1] = vtx_inner_idx + ((i - 1) << 1);
@@ -289,7 +367,7 @@ void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
 
         // Compute normals
         sm::vec2* temp_normals = (sm::vec2*)alloca(count * sizeof(sm::vec2));
-        for (int i0 = count-1, i1 = 0; i1 < count; i0 = i1++)
+        for (int i0 = count-1, i1 = 0; i1 < static_cast<int>(count); i0 = i1++)
         {
             const sm::vec2& p0 = points[i0];
             const sm::vec2& p1 = points[i1];
@@ -300,7 +378,7 @@ void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
             temp_normals[i0].y = -diff.x;
         }
 
-        for (int i0 = count-1, i1 = 0; i1 < count; i0 = i1++)
+        for (int i0 = count-1, i1 = 0; i1 < static_cast<int>(count); i0 = i1++)
         {
             // Average normals
             const sm::vec2& n0 = temp_normals[i0];
