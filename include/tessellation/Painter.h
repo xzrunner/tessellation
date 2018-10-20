@@ -36,6 +36,7 @@ public:
 	void AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float size = 1.0f);
 	void AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float size = 1.0f);
 	void AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t col);
+	void AddPath(const prim::Path& path, uint32_t col, float size = 1.0f);
 
 	void Clear();
 

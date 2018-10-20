@@ -137,6 +137,15 @@ void Painter::AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t co
 	Fill(points, count, col);
 }
 
+void Painter::AddPath(const prim::Path& path, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	Stroke(path, col, size);
+}
+
 void Painter::Clear()
 {
 	m_buf.Clear();
