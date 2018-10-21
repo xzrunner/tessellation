@@ -30,4 +30,15 @@ uint32_t Palette::GetTexID() const
 	return m_tex->TexID();
 }
 
+int Palette::GetTexWidth() const
+{
+	return m_tex->Width();
+}
+
+int Palette::GetTexHeight() const
+{
+	return m_tex->Height();
+}
+
+
 }
