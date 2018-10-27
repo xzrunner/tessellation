@@ -53,6 +53,7 @@ public:
 	void AddCube(const sm::cube& cube, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddArc3D(const sm::mat4& mat, float radius, float start_angle, float end_angle,
 		Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
+	void AddPolygon3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col);
 
 	bool IsEmpty() const;
