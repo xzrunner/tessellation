@@ -1,10 +1,10 @@
-// some code from imgui: https://github.com/ocornut/imgui
-
 #include "tessellation/Painter.h"
 #include "tessellation/Palette.h"
 
 #include <SM_Calc.h>
 #include <primitive/Path.h>
+
+#include <array>
 
 namespace
 {
@@ -14,17 +14,39 @@ const uint32_t COL32_A_MASK = 0xFF000000;
 namespace tess
 {
 
-void Painter::AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float size)
+void Painter::AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
 	sm::vec2 pts[] = { p0, p1 };
-	Stroke(pts, 2, col, false, size);
+	Stroke(pts, 2, col, false, line_width);
 }
 
-void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding, float size)
+void Painter::AddDashLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width, float step_len)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+	if (p0 == p1) {
+		return;
+	}
+
+	const float tot_len = sm::dis_pos_to_pos(p0, p1);
+	const sm::vec2 dt = (p1 - p0) / tot_len;
+	float len = 0;
+	while (len < tot_len)
+	{
+		const float s = len;
+		const float e = std::min(tot_len, len + step_len);
+		sm::vec2 pts[] = { dt * s, dt * e };
+		Stroke(pts, 2, col, false, line_width);
+		len += step_len * 2;
+	}
+}
+
+void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width, uint32_t rounding)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
@@ -37,7 +59,7 @@ void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint
 	path.LineTo({ p0.x, p1.y });
 	path.LineTo(p0);
 
-	Stroke(path, col, size);
+	Stroke(path, col, line_width);
 }
 
 void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding)
@@ -55,7 +77,7 @@ void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col
 	Fill(path, col);
 }
 
-void Painter::AddCircle(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments, float size)
+void Painter::AddCircle(const sm::vec2& centre, float radius, uint32_t col, float line_width, uint32_t num_segments)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
@@ -63,7 +85,7 @@ void Painter::AddCircle(const sm::vec2& centre, float radius, uint32_t col, uint
 
 	prim::Path path;
 	path.Arc(centre, radius - 0.5f, 0.0f, SM_PI * 2.0f, num_segments);
-	Stroke(path, col, size);
+	Stroke(path, col, line_width);
 }
 
 void Painter::AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments)
@@ -78,7 +100,7 @@ void Painter::AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col
 	Fill(path, col);
 }
 
-void Painter::AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float size)
+void Painter::AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
@@ -89,7 +111,7 @@ void Painter::AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2
 	path.LineTo(p1);
 	path.LineTo(p2);
 	path.LineTo(p0);
-	Stroke(path, col, size);
+	Stroke(path, col, line_width);
 }
 
 void Painter::AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col)
@@ -105,27 +127,27 @@ void Painter::AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm
 	Fill(path, col);
 }
 
-void Painter::AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float size)
+void Painter::AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
-	Stroke(points, count, col, false, size);
+	Stroke(points, count, col, false, line_width);
 }
 
-void Painter::AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float size)
+void Painter::AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float line_width)
 {
-	StrokeMultiColor(points, cols, count, false, size);
+	StrokeMultiColor(points, cols, count, false, line_width);
 }
 
-void Painter::AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float size)
+void Painter::AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
-	Stroke(points, count, col, true, size);
+	Stroke(points, count, col, true, line_width);
 }
 
 void Painter::AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t col)
@@ -137,13 +159,99 @@ void Painter::AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t co
 	Fill(points, count, col);
 }
 
-void Painter::AddPath(const prim::Path& path, uint32_t col, float size)
+void Painter::AddPath(const prim::Path& path, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
-	Stroke(path, col, size);
+	Stroke(path, col, line_width);
+}
+
+void Painter::AddLine3D(const sm::vec3& p0, const sm::vec3& p1, Trans2dFunc trans, uint32_t col, float line_width)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	sm::vec2 vs[] = { trans(p0), trans(p1) };
+	Stroke(vs, 2, col, false, line_width);
+}
+
+void Painter::AddCube(const sm::cube& cube, Trans2dFunc trans, uint32_t col, float line_width)
+{
+	auto& min = cube.min;
+	auto& max = cube.max;
+	std::array<sm::vec3, 8> v3 = {
+		sm::vec3(min[0], min[1], min[2]),
+		sm::vec3(max[0], min[1], min[2]),
+		sm::vec3(max[0], max[1], min[2]),
+		sm::vec3(min[0], max[1], min[2]),
+		sm::vec3(min[0], min[1], max[2]),
+		sm::vec3(max[0], min[1], max[2]),
+		sm::vec3(max[0], max[1], max[2]),
+		sm::vec3(min[0], max[1], max[2])
+	};
+
+	std::array<sm::vec2, 8> v2;
+	for (int i = 0; i < 8; ++i) {
+		v2[i] = trans(v3[i]);
+	}
+
+	// bottom
+	AddLine(v2[0], v2[1], col, line_width);
+	AddLine(v2[1], v2[2], col, line_width);
+	AddLine(v2[2], v2[3], col, line_width);
+	AddLine(v2[3], v2[0], col, line_width);
+	// top
+	AddLine(v2[4], v2[5], col, line_width);
+	AddLine(v2[5], v2[6], col, line_width);
+	AddLine(v2[6], v2[7], col, line_width);
+	AddLine(v2[7], v2[4], col, line_width);
+	// middle
+	AddLine(v2[0], v2[4], col, line_width);
+	AddLine(v2[1], v2[5], col, line_width);
+	AddLine(v2[2], v2[6], col, line_width);
+	AddLine(v2[3], v2[7], col, line_width);
+}
+
+void Painter::AddArc3D(const sm::mat4& mat, float radius, float start_angle, float end_angle,
+	                   Trans2dFunc trans, uint32_t col, float line_width, uint32_t num_segments)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	std::vector<sm::vec2> vertices;
+	vertices.resize(num_segments);
+	for (size_t i = 0; i < num_segments; ++i)
+	{
+		float angle = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / (num_segments - 1));
+		auto pos3 = mat * (sm::mat4::RotatedZ(angle * SM_RAD_TO_DEG) * sm::vec3(radius, 0, 0));
+		vertices[i] = trans(pos3);
+	}
+
+	Stroke(vertices.data(), vertices.size(), col, false, line_width);
+}
+
+void Painter::AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	std::vector<sm::vec2> vs2;
+	vs2.reserve(count);
+	for (size_t i = 0; i < count; ++i) {
+		vs2.push_back(trans(points[i]));
+	}
+
+	Fill(vs2.data(), count, col);
+}
+
+bool Painter::IsEmpty() const
+{
+	return m_buf.indices.empty();
 }
 
 void Painter::Clear()
@@ -151,24 +259,25 @@ void Painter::Clear()
 	m_buf.Clear();
 }
 
-void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float size)
+void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0 || ori_count < 2) {
 		return;
 	}
 
 	std::vector<uint32_t> colors(ori_count, col);
-	StrokeMultiColor(points, colors.data(), ori_count, closed, size);
+	StrokeMultiColor(points, colors.data(), ori_count, closed, line_width);
 }
 
-void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, size_t ori_count, bool closed, float size)
+// code from imgui: https://github.com/ocornut/imgui
+void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, size_t ori_count, bool closed, float line_width)
 {
 	size_t new_count = closed ? ori_count : ori_count - 1;
 
 	auto& uv = Palette::UV_WHITE;
 	if (m_flags & ANTI_ALIASED_LINES)
 	{
-		const bool thick_line = size > 1.0f;
+		const bool thick_line = line_width > 1.0f;
 
         // Anti-aliased stroke
         const float AA_SIZE = 1.0f;
@@ -248,7 +357,7 @@ void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, siz
         }
         else
         {
-            const float half_inner_thickness = (size - AA_SIZE) * 0.5f;
+            const float half_inner_thickness = (line_width - AA_SIZE) * 0.5f;
             if (!closed)
             {
                 temp_points[0] = points[0] + temp_normals[0] * (half_inner_thickness + AA_SIZE);
@@ -327,8 +436,8 @@ void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, siz
 			auto inv_len = p0 == p1 ? 1 : 1.0f / sm::dis_pos_to_pos(p0, p1);
 			diff *= inv_len;
 
-			const float dx = diff.x * (size * 0.5f);
-			const float dy = diff.y * (size * 0.5f);
+			const float dx = diff.x * (line_width * 0.5f);
+			const float dy = diff.y * (line_width * 0.5f);
 			m_buf.vert_ptr[0].pos.x = p0.x + dy; m_buf.vert_ptr[0].pos.y = p0.y - dx; m_buf.vert_ptr[0].uv = uv; m_buf.vert_ptr[0].col = col;
 			m_buf.vert_ptr[1].pos.x = p1.x + dy; m_buf.vert_ptr[1].pos.y = p1.y - dx; m_buf.vert_ptr[1].uv = uv; m_buf.vert_ptr[1].col = col;
 			m_buf.vert_ptr[2].pos.x = p1.x - dy; m_buf.vert_ptr[2].pos.y = p1.y + dx; m_buf.vert_ptr[2].uv = uv; m_buf.vert_ptr[2].col = col;
@@ -347,6 +456,7 @@ void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, siz
 	}
 }
 
+// code from imgui: https://github.com/ocornut/imgui
 void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
 {
 	if ((col & COL32_A_MASK) == 0 || count < 3) {
@@ -441,13 +551,13 @@ void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
 	}
 }
 
-void Painter::Stroke(const prim::Path& path, uint32_t col, float size)
+void Painter::Stroke(const prim::Path& path, uint32_t col, float line_width)
 {
 	for (auto& path : path.GetPrevPaths()) {
-		Stroke(path.vertices.data(), path.vertices.size(), col, false, size);
+		Stroke(path.vertices.data(), path.vertices.size(), col, false, line_width);
 	}
 	auto& p = path.GetCurrPath();
-	Stroke(p.data(), p.size(), col, false, size);
+	Stroke(p.data(), p.size(), col, false, line_width);
 }
 
 void Painter::Fill(const prim::Path& path, uint32_t col)
