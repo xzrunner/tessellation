@@ -56,6 +56,9 @@ public:
 	void AddPolygon3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col);
 
+	void AddPainter(const Painter& pt);
+	void FillPainter(const Painter& pt, size_t vert_off, size_t index_off);
+
 	bool IsEmpty() const;
 
 	void Clear();
@@ -79,7 +82,7 @@ public:
 
 		void Clear();
 
-		std::vector<Cmd>            commands;
+//		std::vector<Cmd>            commands;
 		std::vector<Vertex>         vertices;
 		std::vector<unsigned short> indices;
 

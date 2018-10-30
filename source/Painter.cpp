@@ -264,6 +264,45 @@ void Painter::AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFu
 	Fill(vs2.data(), count, col);
 }
 
+void Painter::AddPainter(const Painter& pt)
+{
+	auto& buf = pt.GetBuffer();
+	if (buf.indices.empty()) {
+		return;
+	}
+
+	const size_t idx_count = buf.indices.size();
+	const size_t vtx_count = buf.vertices.size();
+	m_buf.Reserve(idx_count, vtx_count);
+	for (size_t i = 0; i < idx_count; ++i) {
+		*m_buf.index_ptr++ = buf.indices[i] + m_buf.curr_index;
+	}
+	for (size_t i = 0; i < vtx_count; ++i) {
+		*m_buf.vert_ptr++ = buf.vertices[i];
+	}
+	m_buf.curr_index += static_cast<unsigned short>(vtx_count);
+}
+
+void Painter::FillPainter(const Painter& pt, size_t vert_off, size_t index_off)
+{
+	auto& buf = pt.GetBuffer();
+	if (buf.indices.empty()) {
+		return;
+	}
+
+	const size_t idx_count = buf.indices.size();
+	const size_t vtx_count = buf.vertices.size();
+	assert(vert_off + vtx_count - 1 < m_buf.vertices.size()
+	    && index_off + idx_count - 1 < m_buf.indices.size());
+	size_t start_index = vert_off;
+	for (size_t i = 0; i < idx_count; ++i) {
+		m_buf.indices[index_off + i] = buf.indices[i] + start_index;
+	}
+	for (size_t i = 0; i < vtx_count; ++i) {
+		m_buf.vertices[vert_off + i] = buf.vertices[i];
+	}
+}
+
 bool Painter::IsEmpty() const
 {
 	return m_buf.indices.empty();
@@ -604,7 +643,7 @@ void Painter::Buffer::Reserve(size_t idx_count, size_t vtx_count)
 
 void Painter::Buffer::Clear()
 {
-	commands.resize(0);
+//	commands.resize(0);
 	vertices.resize(0);
 	indices.resize(0);
 
