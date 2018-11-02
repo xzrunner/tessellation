@@ -14,6 +14,21 @@ const uint32_t COL32_A_MASK = 0xFF000000;
 namespace tess
 {
 
+Painter::Painter(const Painter& pt)
+	: m_flags(pt.m_flags)
+	, m_buf(pt.m_buf)
+	, m_other_texs(pt.m_other_texs)
+{
+}
+
+Painter& Painter::operator = (const Painter& pt)
+{
+	m_flags      = pt.m_flags;
+	m_buf        = pt.m_buf;
+	m_other_texs = pt.m_other_texs;
+	return *this;
+}
+
 void Painter::AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {
@@ -279,6 +294,43 @@ void Painter::AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFu
 	Fill(vs2.data(), count, col);
 }
 
+void Painter::AddTexQuad(int tex, const std::array<sm::vec2, 4>& positions, const std::array<sm::vec2, 4>& texcoords, uint32_t color)
+{
+	bool merged = false;
+	if (!m_other_texs.empty())
+	{
+		auto& last = m_other_texs.back();
+		if (last.texid == tex && last.end + 1 == m_buf.curr_index) {
+			last.end += 4;
+			merged = true;
+		}
+	}
+	if (!merged) {
+		m_other_texs.push_back({ tex, m_buf.curr_index, m_buf.curr_index + 3 });
+	}
+
+	m_buf.Reserve(6, 4);
+
+	m_buf.index_ptr[0] = m_buf.curr_index;
+	m_buf.index_ptr[1] = m_buf.curr_index + 1;
+	m_buf.index_ptr[2] = m_buf.curr_index + 2;
+	m_buf.index_ptr[3] = m_buf.curr_index;
+	m_buf.index_ptr[4] = m_buf.curr_index + 2;
+	m_buf.index_ptr[5] = m_buf.curr_index + 3;
+	m_buf.index_ptr += 6;
+
+	for (int i = 0; i < 4; ++i)
+	{
+		auto& v = m_buf.vert_ptr[i];
+		v.pos = positions[i];
+		v.uv  = texcoords[i];
+		v.col = color;
+	}
+	m_buf.vert_ptr += 4;
+
+	m_buf.curr_index += 4;
+}
+
 void Painter::AddPainter(const Painter& pt)
 {
 	auto& buf = pt.GetBuffer();
@@ -289,32 +341,51 @@ void Painter::AddPainter(const Painter& pt)
 	const size_t idx_count = buf.indices.size();
 	const size_t vtx_count = buf.vertices.size();
 	m_buf.Reserve(idx_count, vtx_count);
+	auto off_vert = m_buf.curr_index;
 	for (size_t i = 0; i < idx_count; ++i) {
-		*m_buf.index_ptr++ = buf.indices[i] + m_buf.curr_index;
+		*m_buf.index_ptr++ = buf.indices[i] + off_vert;
 	}
 	for (size_t i = 0; i < vtx_count; ++i) {
 		*m_buf.vert_ptr++ = buf.vertices[i];
 	}
 	m_buf.curr_index += static_cast<unsigned short>(vtx_count);
+
+	auto off_tex = m_other_texs.size();
+	std::copy(pt.m_other_texs.begin(), pt.m_other_texs.end(), std::back_inserter(m_other_texs));
+	for (int i = off_tex, n = m_other_texs.size(); i < n; ++i) {
+		auto& tex = m_other_texs[i];
+		tex.begin += off_vert;
+		tex.end   += off_vert;
+	}
 }
 
-void Painter::FillPainter(const Painter& pt, size_t vert_off, size_t index_off)
+void Painter::FillPainter(const Painter& pt, size_t vert_off, size_t index_off, size_t tex_off)
 {
 	auto& buf = pt.GetBuffer();
-	if (buf.indices.empty()) {
+	if (buf.indices.empty() || buf.vertices.empty()) {
 		return;
 	}
 
+	auto& tex_region = pt.GetOtherTexRegion();
+
 	const size_t idx_count = buf.indices.size();
 	const size_t vtx_count = buf.vertices.size();
+	const size_t tex_count = tex_region.size();
 	assert(vert_off + vtx_count - 1 < m_buf.vertices.size()
-	    && index_off + idx_count - 1 < m_buf.indices.size());
-	size_t start_index = vert_off;
+	    && index_off + idx_count - 1 < m_buf.indices.size()
+	    && (tex_count == 0 || tex_off + tex_count - 1 < m_other_texs.size()));
+	auto start_index = static_cast<unsigned short>(vert_off);
 	for (size_t i = 0; i < idx_count; ++i) {
 		m_buf.indices[index_off + i] = buf.indices[i] + start_index;
 	}
 	for (size_t i = 0; i < vtx_count; ++i) {
 		m_buf.vertices[vert_off + i] = buf.vertices[i];
+	}
+	for (size_t i = 0; i < tex_count; ++i) {
+		auto& dst = m_other_texs[tex_off + i];
+		dst = tex_region[i];
+		dst.begin += start_index;
+		dst.end += start_index;
 	}
 }
 
@@ -326,6 +397,7 @@ bool Painter::IsEmpty() const
 void Painter::Clear()
 {
 	m_buf.Clear();
+	m_other_texs.clear();
 }
 
 void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float line_width)
@@ -641,6 +713,25 @@ void Painter::Fill(const prim::Path& path, uint32_t col)
 //////////////////////////////////////////////////////////////////////////
 // struct Painter::Buffer
 //////////////////////////////////////////////////////////////////////////
+
+Painter::Buffer::Buffer(const Buffer& buf)
+	: vertices(buf.vertices)
+	, indices(buf.indices)
+	, curr_index(buf.curr_index)
+{
+	vert_ptr  = vertices.data() + vertices.size();
+	index_ptr = indices.data() + indices.size();
+}
+
+Painter::Buffer& Painter::Buffer::operator = (const Buffer& buf)
+{
+	vertices   = buf.vertices;
+	indices    = buf.indices;
+	curr_index = buf.curr_index;
+	vert_ptr   = vertices.data() + vertices.size();
+	index_ptr  = indices.data() + indices.size();
+	return *this;
+}
 
 void Painter::Buffer::Reserve(size_t idx_count, size_t vtx_count)
 {

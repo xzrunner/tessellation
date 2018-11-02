@@ -33,6 +33,11 @@ static const uint32_t DEFAULT_CIRCLE_SEGMENTS = 12;
 class Painter
 {
 public:
+	Painter() = default;
+	Painter(const Painter& pt);
+	Painter& operator = (const Painter& pt);
+
+	// 2d
 	void AddLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddDashLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, float step_len = DEFAULT_DASH_LINE_STEP);
 	void AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, uint32_t rounding = CORNER_FLAGS_NONE);
@@ -57,8 +62,11 @@ public:
 	void AddPolygon3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddPolygonFilled3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col);
 
+	// ext
+	void AddTexQuad(int tex, const std::array<sm::vec2, 4>& positions, const std::array<sm::vec2, 4>& texcoords, uint32_t color);
+
 	void AddPainter(const Painter& pt);
-	void FillPainter(const Painter& pt, size_t vert_off, size_t index_off);
+	void FillPainter(const Painter& pt, size_t vert_off, size_t index_off, size_t tex_off);
 
 	bool IsEmpty() const;
 
@@ -72,13 +80,17 @@ public:
 		uint32_t col = 0;
 	};
 
-	struct Cmd
-	{
-		size_t elem_count = 0;
-	};
+	//struct Cmd
+	//{
+	//	size_t elem_count = 0;
+	//};
 
 	struct Buffer
 	{
+		Buffer() = default;
+		Buffer(const Buffer& buf);
+		Buffer& operator = (const Buffer& buf);
+
 		void Reserve(size_t idx_count, size_t vtx_count);
 
 		void Clear();
@@ -92,7 +104,15 @@ public:
 		unsigned short* index_ptr = nullptr;
 	};
 
+	// for different tex
+	struct TexRegion
+	{
+		int texid;
+		int begin, end;
+	};
+
 	auto& GetBuffer() const { return m_buf; }
+	auto& GetOtherTexRegion() const { return m_other_texs; }
 
 private:
 	void Stroke(const sm::vec2* points, size_t count, uint32_t col, bool closed, float line_width = DEFAULT_LINE_WIDTH);
@@ -106,6 +126,8 @@ private:
 	uint32_t m_flags = ANTI_ALIASED_LINES | ANTI_ALIASED_FILL;
 
 	Buffer m_buf;
+
+	std::vector<TexRegion> m_other_texs;
 
 }; // Painter
 
