@@ -61,34 +61,23 @@ void Painter::AddDashLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, 
 	}
 }
 
-void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width, uint32_t rounding)
+void Painter::AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width, float rounding, uint32_t rounding_corners_flags)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
-	prim::Path path;
-	path.MoveTo(p0);
-	path.LineTo({ p1.x, p0.y });
-	path.LineTo(p1);
-	path.LineTo({ p0.x, p1.y });
-	path.LineTo(p0);
-
+	auto path = PathRect(p0, p1, col, rounding, rounding_corners_flags);
 	Stroke(path, col, line_width);
 }
 
-void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, uint32_t rounding)
+void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float rounding, uint32_t rounding_corners_flags)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
 	}
 
-	prim::Path path;
-	path.MoveTo(p0);
-	path.LineTo({ p1.x, p0.y });
-	path.LineTo(p1);
-	path.LineTo({ p0.x, p1.y });
-
+	auto path = PathRect(p0, p1, col, rounding, rounding_corners_flags);
 	Fill(path, col);
 }
 
@@ -398,6 +387,32 @@ void Painter::Clear()
 {
 	m_buf.Clear();
 	m_other_texs.clear();
+}
+
+prim::Path Painter::PathRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float rounding, uint32_t rounding_corners_flags)
+{
+	prim::Path path;
+	if (rounding > 0.0f && rounding_corners_flags != CORNER_FLAGS_NONE)
+	{
+		const size_t num_seg = 3;
+		const float rounding_tl = (rounding_corners_flags & CORNER_FLAGS_TOP_LEFT)  ? rounding : 0.0f;
+		const float rounding_tr = (rounding_corners_flags & CORNER_FLAGS_TOP_RIGHT) ? rounding : 0.0f;
+		const float rounding_br = (rounding_corners_flags & CORNER_FLAGS_BOT_RIGHT) ? rounding : 0.0f;
+		const float rounding_bl = (rounding_corners_flags & CORNER_FLAGS_BOT_LEFT)  ? rounding : 0.0f;
+		path.Arc(sm::vec2(p1.x - rounding_tr, p1.y - rounding_tr), rounding_tr, 0, SM_PI * 0.5f, num_seg);
+		path.Arc(sm::vec2(p0.x + rounding_tl, p1.y - rounding_tl), rounding_tl, SM_PI * 0.5f, SM_PI, num_seg);
+		path.Arc(sm::vec2(p0.x + rounding_bl, p0.y + rounding_bl), rounding_bl, SM_PI, SM_PI * 1.5f, num_seg);
+		path.Arc(sm::vec2(p1.x - rounding_br, p0.y + rounding_br), rounding_br, SM_PI * 1.5f, SM_PI * 2, num_seg);
+	}
+	else
+	{
+		path.MoveTo(p0);
+		path.LineTo({ p1.x, p0.y });
+		path.LineTo(p1);
+		path.LineTo({ p0.x, p1.y });
+		path.LineTo(p0);
+	}
+	return path;
 }
 
 void Painter::Stroke(const sm::vec2* points, size_t ori_count, uint32_t col, bool closed, float line_width)
