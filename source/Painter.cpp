@@ -722,7 +722,7 @@ void Painter::Fill(const prim::Path& path, uint32_t col)
 		Fill(path.vertices.data(), path.vertices.size(), col);
 	}
 	auto& p = path.GetCurrPath();
-	Fill(p.data(), p.size(), col);
+	Fill(p.data(), p.size() - 1, col);
 }
 
 //////////////////////////////////////////////////////////////////////////
