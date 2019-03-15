@@ -145,6 +145,48 @@ void Painter::AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols
 	StrokeMultiColor(points, cols, count, false, line_width);
 }
 
+void Painter::AddPolylineDash(const sm::vec2* points, size_t count, uint32_t col, float line_width, float step_len)
+{
+    if ((col & COL32_A_MASK) == 0 || count < 2) {
+        return;
+    }
+
+    bool draw = true;
+    std::vector<sm::vec2> buf;
+    buf.push_back(points[0]);
+    float need = step_len;
+    int ptr = 0;
+    float seg_len = sm::dis_pos_to_pos(points[0], points[1]);
+    float seg_len_left = seg_len;
+    while (ptr < count - 1)
+    {
+        if (need <= seg_len_left)
+        {
+            seg_len_left -= need;
+            need = step_len;
+            auto pos = points[ptr + 1] + (points[ptr] - points[ptr + 1]) * (seg_len_left / seg_len);
+            buf.push_back(pos);
+            if (draw) {
+                AddPolyline(buf.data(), buf.size(), col, line_width);
+            }
+            draw = !draw;
+            buf.clear();
+            buf.push_back(pos);
+        }
+        else
+        {
+            buf.push_back(points[ptr + 1]);
+            need -= seg_len_left;
+            ++ptr;
+            seg_len = sm::dis_pos_to_pos(points[ptr], points[ptr + 1]);
+            seg_len_left = seg_len;
+        }
+    }
+    if (draw) {
+        AddPolyline(buf.data(), buf.size(), col, line_width);
+    }
+}
+
 void Painter::AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {

@@ -48,6 +48,7 @@ public:
 	void AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col);
 	void AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddPolylineMultiColor(const sm::vec2* points, const uint32_t* cols, size_t count, float line_width = DEFAULT_LINE_WIDTH);
+    void AddPolylineDash(const sm::vec2* points, size_t count, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, float step_len = DEFAULT_DASH_LINE_STEP);
 	void AddPolygon(const sm::vec2* points, size_t count, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddPolygonFilled(const sm::vec2* points, size_t count, uint32_t col);
 	void AddPath(const prim::Path& path, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
