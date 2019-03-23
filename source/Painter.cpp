@@ -158,7 +158,7 @@ void Painter::AddPolylineDash(const sm::vec2* points, size_t count, uint32_t col
     int ptr = 0;
     float seg_len = sm::dis_pos_to_pos(points[0], points[1]);
     float seg_len_left = seg_len;
-    while (ptr < count - 1)
+    while (ptr < static_cast<int>(count) - 1)
     {
         if (need <= seg_len_left)
         {
