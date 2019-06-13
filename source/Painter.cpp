@@ -436,6 +436,17 @@ void Painter::Clear()
 	m_other_texs.clear();
 }
 
+void Painter::SetAntiAliased(bool enable)
+{
+    if (enable) {
+        m_flags |= ANTI_ALIASED_LINES;
+        m_flags |= ANTI_ALIASED_FILL;
+    } else {
+        m_flags &= ~ANTI_ALIASED_LINES;
+        m_flags &= ~ANTI_ALIASED_FILL;
+    }
+}
+
 prim::Path Painter::PathRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float rounding, uint32_t rounding_corners_flags)
 {
 	prim::Path path;

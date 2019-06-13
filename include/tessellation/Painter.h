@@ -74,6 +74,8 @@ public:
 
 	void Clear();
 
+    void SetAntiAliased(bool enable);
+
 public:
 	struct Vertex
 	{
