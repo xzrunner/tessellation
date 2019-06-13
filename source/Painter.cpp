@@ -81,6 +81,11 @@ void Painter::AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col
 	Fill(path, col);
 }
 
+void Painter::AddRectFilled(const sm::vec2& center, float radius, uint32_t col, float rounding, uint32_t rounding_corners_flags)
+{
+    AddRectFilled(sm::vec2(center.x - radius, center.y - radius), sm::vec2(center.x + radius, center.y + radius), col, rounding, rounding_corners_flags);
+}
+
 void Painter::AddCircle(const sm::vec2& centre, float radius, uint32_t col, float line_width, uint32_t num_segments)
 {
 	if ((col & COL32_A_MASK) == 0) {

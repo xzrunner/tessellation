@@ -42,6 +42,7 @@ public:
 	void AddDashLine(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, float step_len = DEFAULT_DASH_LINE_STEP);
 	void AddRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, float rounding = 0, uint32_t rounding_corners_flags = CORNER_FLAGS_NONE);
 	void AddRectFilled(const sm::vec2& p0, const sm::vec2& p1, uint32_t col, float rounding = 0, uint32_t rounding_corners_flags = CORNER_FLAGS_NONE);
+    void AddRectFilled(const sm::vec2& center, float radius, uint32_t col, float rounding = 0, uint32_t rounding_corners_flags = CORNER_FLAGS_NONE);
 	void AddCircle(const sm::vec2& centre, float radius, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
 	void AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
 	void AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
