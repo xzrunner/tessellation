@@ -285,7 +285,7 @@ void Painter::AddArc3D(const sm::mat4& mat, float radius, float start_angle, flo
 	Stroke(vertices.data(), vertices.size(), col, false, line_width);
 }
 
-void Painter::AddPolyline3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col, float line_width)
+void Painter::AddPolyline3D(const sm::vec3* points, size_t count, Trans2dFunc trans, uint32_t col, float line_width, bool closed)
 {
 	if ((col & COL32_A_MASK) == 0) {
 		return;
@@ -296,6 +296,10 @@ void Painter::AddPolyline3D(const sm::vec3* points, size_t count, Trans2dFunc tr
 	for (size_t i = 0; i < count; ++i) {
 		vs2.push_back(trans(points[i]));
 	}
+    if (closed && !vs2.empty()) {
+        vs2.push_back(vs2.front());
+        count += 1;
+    }
 
 	Stroke(vs2.data(), count, col, false, line_width);
 }
