@@ -1,6 +1,8 @@
 #include "tessellation/Palette.h"
 
-#include <unirender/Texture.h>
+#include <unirender2/Device.h>
+#include <unirender2/TextureDescription.h>
+#include <unirender2/Bitmap.h>
 
 namespace tess
 {
@@ -13,7 +15,7 @@ const sm::vec2 Palette::UV_GREEN = sm::vec2(0.75f, 0.25f);
 const sm::vec2 Palette::UV_BLUE  = sm::vec2(0.25f, 0.75f);
 const sm::vec2 Palette::UV_WHITE = sm::vec2(0.75f, 0.75f);
 
-Palette::Palette(ur::RenderContext* rc)
+Palette::Palette(const ur2::Device& dev)
 {
 	uint32_t buf[4];
 	buf[0] = 0xff0000ff; // r
@@ -21,24 +23,15 @@ Palette::Palette(ur::RenderContext* rc)
 	buf[2] = 0xffff0000; // b
 	buf[3] = 0xffffffff; // w
 
-	m_tex = std::make_unique<ur::Texture>();
-	m_tex->Upload(rc, 2, 2, ur::TEXTURE_RGBA8, reinterpret_cast<unsigned char*>(buf));
-}
+    //ur2::Bitmap bmp(2, 2, 4, reinterpret_cast<unsigned char*>(buf));
+    //m_tex = dev.CreateTexture(bmp, ur2::TextureFormat::RGBA8);
 
-uint32_t Palette::GetTexID() const
-{
-	return m_tex->TexID();
+    ur2::TextureDescription desc;
+    desc.target = ur2::TextureTarget::Texture2D;
+    desc.width  = 2;
+    desc.height = 2;
+    desc.format = ur2::TextureFormat::RGBA8;
+    m_tex = dev.CreateTexture(desc, buf);
 }
-
-int Palette::GetTexWidth() const
-{
-	return m_tex->Width();
-}
-
-int Palette::GetTexHeight() const
-{
-	return m_tex->Height();
-}
-
 
 }

@@ -1,10 +1,11 @@
 #pragma once
 
 #include <SM_Vector.h>
+#include <unirender2/typedef.h>
 
 #include <memory>
 
-namespace ur { class RenderContext; class Texture; }
+namespace ur2 { class Device; }
 
 namespace tess
 {
@@ -12,12 +13,9 @@ namespace tess
 class Palette
 {
 public:
-	Palette(ur::RenderContext* rc);
+	Palette(const ur2::Device& dev);
 
-	uint32_t GetTexID() const;
-
-	int GetTexWidth() const;
-	int GetTexHeight() const;
+    auto GetTexture() const { return m_tex; }
 
 	static const sm::vec2 UV_RED;
 	static const sm::vec2 UV_GREEN;
@@ -25,7 +23,7 @@ public:
 	static const sm::vec2 UV_WHITE;
 
 private:
-	std::unique_ptr<ur::Texture> m_tex = nullptr;
+    ur2::TexturePtr m_tex = nullptr;
 
 }; // Palette
 
