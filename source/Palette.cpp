@@ -23,15 +23,8 @@ Palette::Palette(const ur2::Device& dev)
 	buf[2] = 0xffff0000; // b
 	buf[3] = 0xffffffff; // w
 
-    //ur2::Bitmap bmp(2, 2, 4, reinterpret_cast<unsigned char*>(buf));
-    //m_tex = dev.CreateTexture(bmp, ur2::TextureFormat::RGBA8);
-
-    ur2::TextureDescription desc;
-    desc.target = ur2::TextureTarget::Texture2D;
-    desc.width  = 2;
-    desc.height = 2;
-    desc.format = ur2::TextureFormat::RGBA8;
-    m_tex = dev.CreateTexture(desc, buf);
+    ur2::Bitmap bmp(2, 2, 4, reinterpret_cast<unsigned char*>(buf));
+    m_tex = dev.CreateTexture(bmp, ur2::TextureFormat::RGBA8);
 }
 
 }
