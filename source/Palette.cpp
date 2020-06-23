@@ -2,7 +2,6 @@
 
 #include <unirender/Device.h>
 #include <unirender/TextureDescription.h>
-#include <unirender/Bitmap.h>
 
 namespace tess
 {
@@ -23,8 +22,7 @@ Palette::Palette(const ur::Device& dev)
 	buf[2] = 0xffff0000; // b
 	buf[3] = 0xffffffff; // w
 
-    ur::Bitmap bmp(2, 2, 4, reinterpret_cast<unsigned char*>(buf));
-    m_tex = dev.CreateTexture(bmp, ur::TextureFormat::RGBA8);
+    m_tex = dev.CreateTexture(2, 2, ur::TextureFormat::RGBA8, buf, 2 * 2 * 4);
 }
 
 }
