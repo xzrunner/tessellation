@@ -3,3 +3,5 @@ projects/*
 
 !projects/tessellation.vcxproj
 !projects/tessellation.vcxproj.filters
+!projects/tessellation_new.vcxproj
+!projects/tessellation_new.vcxproj.filters
