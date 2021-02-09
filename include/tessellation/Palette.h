@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SM_Vector.h>
+#include <SM_Rect.h>
 #include <unirender/typedef.h>
 
 #include <memory>
@@ -17,13 +18,15 @@ public:
 
     auto GetTexture() const { return m_tex; }
 
-	static const sm::vec2 UV_RED;
-	static const sm::vec2 UV_GREEN;
-	static const sm::vec2 UV_BLUE;
-	static const sm::vec2 UV_WHITE;
+    sm::vec2 GetWhiteUV() const;
+    static sm::vec2 GetWhiteUVDefault();
+
+    void RelocateUV(const sm::rect& region);
 
 private:
     ur::TexturePtr m_tex = nullptr;
+
+    sm::vec2 m_uv_white;
 
 }; // Palette
 

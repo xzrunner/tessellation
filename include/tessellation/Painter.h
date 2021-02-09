@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <functional>
+#include <memory>
 
 namespace prim { class Path; }
 
@@ -29,6 +30,8 @@ static const uint32_t ANTI_ALIASED_FILL  = 0x2;
 static const float    DEFAULT_LINE_WIDTH      = 1.0f;
 static const float    DEFAULT_DASH_LINE_STEP  = 2.0f;
 static const uint32_t DEFAULT_CIRCLE_SEGMENTS = 12;
+
+class Palette;
 
 class Painter
 {
@@ -75,6 +78,10 @@ public:
 	void Clear();
 
     void SetAntiAliased(bool enable);
+
+	void SetPalette(const std::shared_ptr<Palette>& palette) {
+		m_palette = palette;
+	}
 
 public:
 	struct Vertex
@@ -134,6 +141,8 @@ private:
 	Buffer m_buf;
 
 	std::vector<TexRegion> m_other_texs;
+
+	std::shared_ptr<Palette> m_palette = nullptr;
 
 }; // Painter
 

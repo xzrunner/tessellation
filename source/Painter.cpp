@@ -5,6 +5,7 @@
 #include <primitive/Path.h>
 
 #include <array>
+#include <iterator>
 
 namespace
 {
@@ -18,6 +19,7 @@ Painter::Painter(const Painter& pt)
 	: m_flags(pt.m_flags)
 	, m_buf(pt.m_buf)
 	, m_other_texs(pt.m_other_texs)
+	, m_palette(pt.m_palette)
 {
 }
 
@@ -26,6 +28,7 @@ Painter& Painter::operator = (const Painter& pt)
 	m_flags      = pt.m_flags;
 	m_buf        = pt.m_buf;
 	m_other_texs = pt.m_other_texs;
+	m_palette    = pt.m_palette;
 	return *this;
 }
 
@@ -492,7 +495,7 @@ void Painter::StrokeMultiColor(const sm::vec2* points, const uint32_t* cols, siz
 {
 	size_t new_count = closed ? ori_count : ori_count - 1;
 
-	auto& uv = Palette::UV_WHITE;
+	auto& uv = m_palette ? m_palette->GetWhiteUV() : Palette::GetWhiteUVDefault();
 	if (m_flags & ANTI_ALIASED_LINES)
 	{
 		const bool thick_line = line_width > 1.0f;
@@ -681,7 +684,7 @@ void Painter::Fill(const sm::vec2* points, size_t count, uint32_t col)
 		return;
 	}
 
-	auto& uv = Palette::UV_WHITE;
+	auto& uv = m_palette ? m_palette->GetWhiteUV() : Palette::GetWhiteUVDefault();
 	if (m_flags & ANTI_ALIASED_FILL)
     {
         // Anti-aliased Fill
