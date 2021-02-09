@@ -136,6 +136,7 @@ void Painter::AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm
 	path.MoveTo(p0);
 	path.LineTo(p1);
 	path.LineTo(p2);
+	path.LineTo(p0);
 	Fill(path, col);
 }
 
