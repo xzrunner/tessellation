@@ -40,8 +40,9 @@ sm::vec2 Palette::GetWhiteUVDefault()
 	return UV_WHITE;
 }
 
-void Palette::RelocateUV(const sm::rect& region)
+void Palette::RelocateUV(const ur::TexturePtr& tex, const sm::rect& region)
 {
+	m_relocated_tex = tex;
 	m_uv_white.x = region.xmin + region.Width()  * UV_WHITE.x;
 	m_uv_white.y = region.ymin + region.Height() * UV_WHITE.y;
 }

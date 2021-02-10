@@ -79,9 +79,8 @@ public:
 
     void SetAntiAliased(bool enable);
 
-	void SetPalette(const std::shared_ptr<Palette>& palette) {
-		m_palette = palette;
-	}
+	void SetPalette(const std::shared_ptr<Palette>& palette) { m_palette = palette; }
+	auto GetPalette() const { return m_palette; }
 
 public:
 	struct Vertex
