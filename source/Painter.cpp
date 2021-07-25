@@ -106,9 +106,8 @@ void Painter::AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col
 		return;
 	}
 
-	const float a_max = SM_PI * 2.0f * ((float)num_segments - 1.0f) / (float)num_segments;
 	prim::Path path;
-	path.Arc(centre, radius - 0.5f, 0.0f, a_max, num_segments);
+	path.Arc(centre, radius - 0.5f, 0.0f, SM_PI * 2.0f, num_segments);
 	Fill(path, col);
 }
 
