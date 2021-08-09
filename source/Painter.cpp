@@ -222,6 +222,15 @@ void Painter::AddPath(const prim::Path& path, uint32_t col, float line_width)
 	Stroke(path, col, line_width);
 }
 
+void Painter::AddPoint3D(const sm::vec3& p, Trans2dFunc trans, uint32_t col, float size)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	AddCircleFilled(trans(p), size, col);
+}
+
 void Painter::AddLine3D(const sm::vec3& p0, const sm::vec3& p1, Trans2dFunc trans, uint32_t col, float line_width)
 {
 	if ((col & COL32_A_MASK) == 0) {

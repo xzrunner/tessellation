@@ -27,6 +27,7 @@ static const uint32_t CORNER_FLAGS_ALL   = 0xF;
 static const uint32_t ANTI_ALIASED_LINES = 0x1;
 static const uint32_t ANTI_ALIASED_FILL  = 0x2;
 
+static const float    DEFAULT_POINT_SIZE      = 5.0f;
 static const float    DEFAULT_LINE_WIDTH      = 1.0f;
 static const float    DEFAULT_DASH_LINE_STEP  = 2.0f;
 static const uint32_t DEFAULT_CIRCLE_SEGMENTS = 12;
@@ -59,6 +60,7 @@ public:
 
 	// 3d
 	using Trans2dFunc = std::function<sm::vec2(const sm::vec3)>;
+	void AddPoint3D(const sm::vec3& p, Trans2dFunc trans, uint32_t col, float size = DEFAULT_POINT_SIZE);
 	void AddLine3D(const sm::vec3& p0, const sm::vec3& p1, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddCube(const sm::cube& cube, Trans2dFunc trans, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddArc3D(const sm::mat4& mat, float radius, float start_angle, float end_angle,
