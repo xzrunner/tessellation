@@ -468,7 +468,7 @@ prim::Path Painter::PathRect(const sm::vec2& p0, const sm::vec2& p1, uint32_t co
 	prim::Path path;
 	if (rounding > 0.0f && rounding_corners_flags != CORNER_FLAGS_NONE)
 	{
-		const size_t num_seg = 3;
+		const size_t num_seg = 6;
 		const float rounding_tl = (rounding_corners_flags & CORNER_FLAGS_TOP_LEFT)  ? rounding : 0.0f;
 		const float rounding_tr = (rounding_corners_flags & CORNER_FLAGS_TOP_RIGHT) ? rounding : 0.0f;
 		const float rounding_br = (rounding_corners_flags & CORNER_FLAGS_BOT_RIGHT) ? rounding : 0.0f;
