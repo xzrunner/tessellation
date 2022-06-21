@@ -49,6 +49,7 @@ public:
     void AddRectFilled(const sm::vec2& center, float radius, uint32_t col, float rounding = 0, uint32_t rounding_corners_flags = CORNER_FLAGS_NONE);
 	void AddCircle(const sm::vec2& centre, float radius, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
 	void AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
+	void AddArc(const sm::vec2& centre, float radius, float start_angle, float end_angle, uint32_t col, float line_width = DEFAULT_LINE_WIDTH, uint32_t num_segments = DEFAULT_CIRCLE_SEGMENTS);
 	void AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);
 	void AddTriangleFilled(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col);
 	void AddPolyline(const sm::vec2* points, size_t count, uint32_t col, float line_width = DEFAULT_LINE_WIDTH);

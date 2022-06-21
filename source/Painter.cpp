@@ -6,6 +6,7 @@
 
 #include <array>
 #include <iterator>
+#include <cmath>
 
 namespace
 {
@@ -109,6 +110,19 @@ void Painter::AddCircleFilled(const sm::vec2& centre, float radius, uint32_t col
 	prim::Path path;
 	path.Arc(centre, radius - 0.5f, 0.0f, SM_PI * 2.0f, num_segments);
 	Fill(path, col);
+}
+
+void Painter::AddArc(const sm::vec2& centre, float radius, float start_angle, float end_angle, uint32_t col, float line_width, uint32_t num_segments)
+{
+	if ((col & COL32_A_MASK) == 0) {
+		return;
+	}
+
+	const int num = static_cast<int>(std::ceil(std::abs(start_angle - end_angle) / SM_PI * 2.0f * num_segments));
+
+	prim::Path path;
+	path.Arc(centre, radius - 0.5f, start_angle, end_angle, num);
+	Stroke(path, col, line_width);
 }
 
 void Painter::AddTriangle(const sm::vec2& p0, const sm::vec2& p1, const sm::vec2& p2, uint32_t col, float line_width)
